@@ -7,7 +7,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/publish'
 
     steps:
       - name: Checkout repo
@@ -19,11 +19,10 @@ jobs:
           node-version: 16
 
       - name: Install dependencies
-        uses: jaid/action-npm-install@v1.2.1
-        # uses: bahmutov/npm-install@v1
+        uses: bahmutov/npm-install@v1
 
       - name: Build project
-        run: yarn build
+        run: npm run build
 
       - name: Upload production-ready build files
         uses: actions/upload-artifact@v3
@@ -35,7 +34,7 @@ jobs:
     name: Deploy
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/publish'
 
     steps:
       - name: Download artifact
