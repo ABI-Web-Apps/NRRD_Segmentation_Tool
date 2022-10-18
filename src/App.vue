@@ -34,7 +34,6 @@
 import { GUI } from "dat.gui";
 import * as Copper from "copper3d_visualisation";
 import "copper3d_visualisation/dist/css/style.css";
-import { TrackballControls } from "three/examples/jsm/controls/TrackballControls";
 import NavBar from "./components/NavBar.vue";
 import { getCurrentInstance, onMounted, ref, watchEffect } from "vue";
 
