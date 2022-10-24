@@ -38,6 +38,7 @@ type Props = {
   fileNum: number;
   min?: number;
   max?: number;
+  initSliceIndex?: number;
   immediateSliceNum?: number;
   contrastIndex?: number;
   isAxisClicked?: boolean;
@@ -50,13 +51,15 @@ let p = withDefaults(defineProps<Props>(), {
   isAxisClicked: false,
 });
 const state = reactive(p);
-const { max, immediateSliceNum, contrastIndex, isAxisClicked } = toRefs(state);
+const { max, immediateSliceNum, contrastIndex, isAxisClicked, initSliceIndex } =
+  toRefs(state);
 const sliceNum = ref(0);
 let preViousSliceNum = p.min;
 let previousMax = 0;
 let isShowContrast = false;
 let count = 0;
 let magnification = 1;
+let initFlag = false;
 
 const emit = defineEmits([
   "onSliceChange",
@@ -93,6 +96,11 @@ const onChangeSlider = () => {
 };
 
 watchEffect(() => {
+  initSliceIndex?.value && (sliceNum.value = initSliceIndex.value);
+  initFlag = true;
+});
+
+watchEffect(() => {
   if (isShowContrast) {
     sliceNum.value = immediateSliceNum.value * p.fileNum + contrastIndex.value;
   } else {
@@ -113,6 +121,10 @@ watchEffect(() => {
     }
     preViousSliceNum = sliceNum.value;
     previousMax = max.value;
+  }
+  if (initFlag) {
+    sliceNum.value = initSliceIndex?.value as number;
+    initFlag = false;
   }
 });
 </script>
