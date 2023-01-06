@@ -8,12 +8,12 @@
         show-input
       />
       <div class="arrows">
-        <span @click="onMagnificationClick(0.2)"
+        <!-- <span @click="onMagnificationClick(0.2)"
           ><img class="image" src="../assets/images/zoom-in.ico" alt=""
         /></span>
         <span @click="onMagnificationClick(-0.2)"
           ><img class="image" src="../assets/images/zoom-out.ico" alt=""
-        /></span>
+        /></span> -->
         <span @click="onSwitchSliceOrientation('x')"
           ><img
             class="image"
@@ -56,16 +56,10 @@ let p = withDefaults(defineProps<Props>(), {
   isAxisClicked: false,
 });
 const state = reactive(p);
-const {
-  immediateSliceNum,
-  contrastIndex,
-  initSliceIndex,
-  fileNum,
-  showContrast,
-} = toRefs(state);
+const { immediateSliceNum, contrastIndex, initSliceIndex, fileNum } =
+  toRefs(state);
 const sliceNum = ref(0);
 
-let isShowContrast = false;
 let magnification = 1;
 let filesNum = 0;
 let currentSliderNum = 0;
@@ -98,6 +92,22 @@ const onMagnificationClick = (factor: number) => {
   }
   emit("resetMainAreaSize", magnification);
 };
+document.addEventListener("keydown", (ev: KeyboardEvent) => {
+  if (ev.key === "ArrowUp") {
+    if (currentSliderNum > 0) {
+      currentSliderNum -= 1;
+      updateSlider();
+      emit("onSliceChange", -1);
+    }
+  }
+  if (ev.key === "ArrowDown") {
+    if (currentSliderNum < p.max) {
+      currentSliderNum += 1;
+      updateSlider();
+      emit("onSliceChange", 1);
+    }
+  }
+});
 
 const onChangeSlider = () => {
   const step = sliceNum.value - currentSliderNum;
@@ -114,38 +124,14 @@ const updateSlider = () => {
 };
 
 watchEffect(() => {
-  if (showContrast.value) {
-    currentSliderNum = currentSliderNum * filesNum;
-  } else {
-    currentSliderNum = Math.floor(currentSliderNum / filesNum);
-  }
-  isShowContrast = showContrast.value;
+  currentSliderNum =
+    immediateSliceNum.value * fileNum.value + contrastIndex.value;
   updateSlider();
 });
 
 watchEffect(() => {
-  const old = filesNum;
-  filesNum = fileNum.value;
-  if (old > 0 && isShowContrast) {
-    isFileChange = true;
-    currentSliderNum = Math.floor(currentSliderNum / old) * filesNum;
-    updateSlider();
-    isFileChange = false;
-  }
-});
-
-watchEffect(() => {
-  if (isShowContrast) {
-    currentSliderNum =
-      immediateSliceNum.value * fileNum.value + contrastIndex.value;
-  } else {
-    currentSliderNum = immediateSliceNum.value;
-  }
-  updateSlider();
-});
-
-watchEffect(() => {
-  initSliceIndex?.value && (currentSliderNum = initSliceIndex.value);
+  initSliceIndex?.value &&
+    (currentSliderNum = (initSliceIndex?.value as number) * fileNum.value);
   updateSlider();
 });
 </script>

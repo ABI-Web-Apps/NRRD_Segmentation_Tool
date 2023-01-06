@@ -2,11 +2,9 @@
   <div id="bg" ref="base_container">
     <div class="intro" ref="intro">
       <h3>How to use:</h3>
-      <p><strong>--> Zoom:</strong> Use mouse wheel.</p>
-      <p><strong>--> Pan: </strong> Use mouse right click + drag image.</p>
-      <p>
-        <strong>--> Switch slice:</strong> Use mouse left click + drag image.
-      </p>
+      <p><strong>--> Zoom:</strong> Mouse wheel.</p>
+      <p><strong>--> Pan: </strong> Mouse right click + drag image.</p>
+      <p><strong>--> Switch slice:</strong> Mouse left click + drag image.</p>
       <p>
         <strong>--> Painting:</strong> Press `shift` key on your keyboard (don't
         release it), then use mouse left click to paint.
@@ -14,6 +12,11 @@
       <p>
         <strong> --> Undo:</strong> 1. In GUI click undo; or 2. on keyborad
         using ctrl+z (windows) / command+z (mac).
+      </p>
+      <p>
+        <strong> --> Cursor Inspector:</strong> Press `s` on the keyboard to
+        enable/disable, then left click on images, and use bottom tool's bar to
+        switch the image orientation.
       </p>
     </div>
     <div ref="c_gui" id="gui"></div>
@@ -23,9 +26,7 @@
       :max="max"
       :immediate-slice-num="immediateSliceNum"
       :contrast-index="contrastNum"
-      :is-axis-clicked="isAxisClicked"
       :init-slice-index="initSliceIndex"
-      :show-contrast="isShowContrast"
       @on-slice-change="getSliceChangedNum"
       @reset-main-area-size="resetMainAreaSize"
       @on-change-orientation="resetSlicesOrientation"
@@ -44,18 +45,15 @@ import * as Copper from "copper3d_visualisation";
 import "copper3d_visualisation/dist/css/style.css";
 import NavBar from "./components/NavBar.vue";
 import Upload from "./components/Upload.vue";
-import { getCurrentInstance, onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref, watchEffect } from "vue";
 
-// let refs = null;
 let appRenderer: Copper.copperRenderer;
 let max = ref(0);
 let immediateSliceNum = ref(0);
 let contrastNum = ref(0);
 let fileNum = ref(0);
 let initSliceIndex = ref(0);
-let isAxisClicked = ref(false);
 let dialog = ref(false);
-let isShowContrast = ref(false);
 
 let base_container = ref<HTMLDivElement>();
 let intro = ref<HTMLDivElement>();
@@ -122,13 +120,11 @@ const onCloseDialog = (flag: boolean) => {
 
 const resetSlicesOrientation = (axis: "x" | "y" | "z") => {
   nrrdTools.setSliceOrientation(axis);
-  const status = nrrdTools.getIsShowContrastState();
-  isAxisClicked.value = true;
-  if (status) {
-    max.value = nrrdTools.getMaxSliceNum()[1];
-  } else {
-    max.value = nrrdTools.getMaxSliceNum()[0];
-  }
+  max.value = nrrdTools.getMaxSliceNum()[1];
+  const { currentIndex, contrastIndex } =
+    nrrdTools.getCurrentSlicesNumAndContrastNum();
+  immediateSliceNum.value = currentIndex;
+  contrastNum.value = contrastIndex;
 };
 const getSliceChangedNum = (sliceNum: number) => {
   nrrdTools.setSliceMoving(sliceNum);
@@ -148,7 +144,7 @@ watchEffect(() => {
     allSlices.sort((a: any, b: any) => {
       return a.order - b.order;
     });
-
+    nrrdTools.setShowInMainArea(true);
     nrrdTools.setAllSlices(allSlices);
     initSliceIndex.value = nrrdTools.getCurrentSliceIndex();
 
@@ -168,34 +164,46 @@ watchEffect(() => {
       nrrdTools.redrawMianPreOnDisplayCanvas();
     }
 
-    max.value = nrrdTools.getMaxSliceNum()[0];
-    filesCount.value = 0;
+    max.value = nrrdTools.getMaxSliceNum()[1];
+    setTimeout(() => {
+      initSliceIndex.value = 0;
+      filesCount.value = 0;
+    }, 1000);
     firstLoad = false;
 
     const selectedState: selecedType = {};
 
-    for (let i = 0; i < allSlices.length - 1; i++) {
-      const key = "contrast" + i;
-      selectedState[key] = true;
+    for (let i = 0; i < allSlices.length; i++) {
+      if (i == 0) {
+        selectedState["pre"] = true;
+      } else {
+        const key = "contrast" + i;
+        selectedState[key] = true;
+      }
     }
 
     nrrdTools.removeGuiFolderChilden(selectedContrastFolder);
-    for (let i = 0; i < allSlices.length - 1; i++) {
-      selectedContrastFolder
-        .add(selectedState, "contrast" + i)
-        .onChange((flag) => {
-          if (flag) {
-            fileNum.value += 1;
-            nrrdTools.removeSkip(i);
-          } else {
-            fileNum.value -= 1;
-            nrrdTools.addSkip(i);
-          }
-          const maxNum = nrrdTools.getMaxSliceNum()[1];
-          if (maxNum) {
-            max.value = maxNum;
-          }
-        });
+    for (let i = 0; i < allSlices.length; i++) {
+      let name = "";
+      i === 0 ? (name = "pre") : (name = "contrast" + i);
+      selectedContrastFolder.add(selectedState, name).onChange((flag) => {
+        if (flag) {
+          fileNum.value += 1;
+          nrrdTools.addSkip(i);
+        } else {
+          fileNum.value -= 1;
+          nrrdTools.removeSkip(i);
+        }
+        const maxNum = nrrdTools.getMaxSliceNum()[1];
+        if (maxNum) {
+          max.value = maxNum;
+          const { currentIndex, contrastIndex } =
+            nrrdTools.getCurrentSlicesNumAndContrastNum();
+
+          immediateSliceNum.value = currentIndex;
+          contrastNum.value = contrastIndex + 1;
+        }
+      });
     }
   }
 });
@@ -229,6 +237,7 @@ function loadModel(name: string) {
 }
 
 const loadAllNrrds = (urls: Array<string>) => {
+  fileNum.value = urls.length;
   allSlices = [];
   const mainPreArea = (
     volume: any,
@@ -289,7 +298,6 @@ function setupGui() {
             "/NRRD_Segmentation_Tool/nrrd/case1/c4.nrrd",
           ];
           break;
-
         case "case2":
           urls = [
             "/NRRD_Segmentation_Tool/nrrd/case2/pre.nrrd",
@@ -311,15 +319,15 @@ function setupGui() {
       }
       readyToLoad(urls);
     });
-  gui.add(state, "showContrast").onChange((flag) => {
-    nrrdTools.setShowInMainArea(flag);
-    isAxisClicked.value = false;
-    if (flag) {
-      max.value = nrrdTools.getMaxSliceNum()[1];
-    } else {
-      max.value = nrrdTools.getMaxSliceNum()[0];
-    }
-  });
+  // gui.add(state, "showContrast").onChange((flag) => {
+  //   nrrdTools.setShowInMainArea(flag);
+  //   isAxisClicked.value = false;
+  //   if (flag) {
+  //     max.value = nrrdTools.getMaxSliceNum()[1];
+  //   } else {
+  //     max.value = nrrdTools.getMaxSliceNum()[0];
+  //   }
+  // });
   selectedContrastFolder = gui.addFolder("select display contrast");
 }
 </script>
