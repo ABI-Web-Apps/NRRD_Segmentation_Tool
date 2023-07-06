@@ -8,24 +8,36 @@
         show-input
       />
       <div class="arrows">
-        <span @click="onMagnificationClick(0.2)"
+        <!-- <span @click="onMagnificationClick(0.2)"
           ><img class="image" src="../assets/images/zoom-in.ico" alt=""
         /></span>
         <span @click="onMagnificationClick(-0.2)"
           ><img class="image" src="../assets/images/zoom-out.ico" alt=""
-        /></span>
-        <span @click="onSwitchSliceOrientation('x')"
-          ><img
+        /></span> -->
+        <span @click="onSwitchSliceOrientation('x')">
+          <!-- <img
             class="image"
             src="../assets/images/person_left_view.png"
             alt=""
-        /></span>
-        <span @click="onSwitchSliceOrientation('z')"
-          ><img class="image" src="../assets/images/person_anterior.png" alt=""
-        /></span>
-        <span @click="onSwitchSliceOrientation('y')"
-          ><img class="image" src="../assets/images/person_top_down.png" alt=""
-        /></span>
+        /> -->
+          <i class="switch_font">Sagittal</i>
+        </span>
+        <span @click="onSwitchSliceOrientation('z')">
+          <!-- <img class="image" src="../assets/images/person_anterior.png" alt=""/> -->
+          <i class="switch_font">Axial</i>
+        </span>
+        <span @click="onSwitchSliceOrientation('y')">
+          <!-- <img class="image" src="../assets/images/person_top_down.png" alt=""/> -->
+          <i class="switch_font">Coronal</i>
+        </span>
+        <span class="save" @click="onSave()">
+          <div>
+            <ion-icon name="save-outline"></ion-icon>
+          </div>
+          <div>
+            <i>save</i>
+          </div>
+        </span>
         <span @click="openDialog">
           <ion-icon name="cloud-upload-outline"></ion-icon>
         </span>
@@ -56,16 +68,10 @@ let p = withDefaults(defineProps<Props>(), {
   isAxisClicked: false,
 });
 const state = reactive(p);
-const {
-  immediateSliceNum,
-  contrastIndex,
-  initSliceIndex,
-  fileNum,
-  showContrast,
-} = toRefs(state);
+const { immediateSliceNum, contrastIndex, initSliceIndex, fileNum } =
+  toRefs(state);
 const sliceNum = ref(0);
 
-let isShowContrast = false;
 let magnification = 1;
 let filesNum = 0;
 let currentSliderNum = 0;
@@ -77,7 +83,12 @@ const emit = defineEmits([
   "resetMainAreaSize",
   "onChangeOrientation",
   "onOpenDialog",
+  "onSave",
 ]);
+
+const onSave = () => {
+  emit("onSave", true);
+};
 
 const openDialog = () => {
   emit("onOpenDialog", true);
@@ -86,6 +97,7 @@ const openDialog = () => {
 const onSwitchSliceOrientation = (axis: string) => {
   isAxis = true;
   emit("onChangeOrientation", axis);
+  isAxis = false;
 };
 
 const onMagnificationClick = (factor: number) => {
@@ -98,6 +110,22 @@ const onMagnificationClick = (factor: number) => {
   }
   emit("resetMainAreaSize", magnification);
 };
+document.addEventListener("keydown", (ev: KeyboardEvent) => {
+  if (ev.key === "ArrowUp") {
+    if (currentSliderNum > 0) {
+      currentSliderNum -= 1;
+      updateSlider();
+      emit("onSliceChange", -1);
+    }
+  }
+  if (ev.key === "ArrowDown") {
+    if (currentSliderNum < p.max) {
+      currentSliderNum += 1;
+      updateSlider();
+      emit("onSliceChange", 1);
+    }
+  }
+});
 
 const onChangeSlider = () => {
   const step = sliceNum.value - currentSliderNum;
@@ -114,38 +142,14 @@ const updateSlider = () => {
 };
 
 watchEffect(() => {
-  if (showContrast.value) {
-    currentSliderNum = currentSliderNum * filesNum;
-  } else {
-    currentSliderNum = Math.floor(currentSliderNum / filesNum);
-  }
-  isShowContrast = showContrast.value;
+  currentSliderNum =
+    immediateSliceNum.value * fileNum.value + contrastIndex.value;
   updateSlider();
 });
 
 watchEffect(() => {
-  const old = filesNum;
-  filesNum = fileNum.value;
-  if (old > 0 && isShowContrast) {
-    isFileChange = true;
-    currentSliderNum = Math.floor(currentSliderNum / old) * filesNum;
-    updateSlider();
-    isFileChange = false;
-  }
-});
-
-watchEffect(() => {
-  if (isShowContrast) {
-    currentSliderNum =
-      immediateSliceNum.value * fileNum.value + contrastIndex.value;
-  } else {
-    currentSliderNum = immediateSliceNum.value;
-  }
-  updateSlider();
-});
-
-watchEffect(() => {
-  initSliceIndex?.value && (currentSliderNum = initSliceIndex.value);
+  initSliceIndex?.value &&
+    (currentSliderNum = (initSliceIndex?.value as number) * fileNum.value);
   updateSlider();
 });
 </script>
@@ -158,7 +162,7 @@ watchEffect(() => {
 }
 .nav {
   position: fixed;
-  bottom: 10px;
+  bottom: 25px;
   height: 60px;
   width: 100%;
   display: flex;
@@ -211,5 +215,26 @@ watchEffect(() => {
 .image {
   width: 1em;
   height: 1em;
+}
+.switch_font {
+  font-size: 0.6em;
+}
+.switch_font:active {
+  font-size: 0.6em;
+  color: #f44336;
+}
+.save {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+.save div {
+  padding: -10px 0;
+  margin: -6px 0;
+}
+.save i {
+  font-size: 0.5em;
 }
 </style>
