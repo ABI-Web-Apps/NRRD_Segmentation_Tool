@@ -15,6 +15,9 @@
       </div>
       <template #tip>
         <div class="el-upload__tip">Please drag or upload NRRD files!</div>
+        <div class="el-upload__tip">
+          Ready to Submit: Please click drak area!!!
+        </div>
       </template>
     </el-upload>
   </div>
@@ -46,7 +49,7 @@ const closeDialog = (e: MouseEvent) => {
       const url = URL.createObjectURL(file);
       urls.push(url);
     });
-    emit("getLoadFilesUrls", urls);
+    emit("getLoadFilesUrls", urls, "uploadFiles");
     emit("onCloseDialog", false);
     loadedFiles = true;
     resetLoadState();
